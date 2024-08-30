@@ -1,6 +1,7 @@
 from .engine import EngineLM, get_engine
 from typing import Union
 
+
 class SingletonBackwardEngine:
     """
     A singleton class representing the backward engine.
@@ -15,9 +16,9 @@ class SingletonBackwardEngine:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, 'engine'):
+        if not hasattr(self, "engine"):
             self.engine: EngineLM = None
-    
+
     def set_engine(self, engine: EngineLM, override: bool = False):
         """
         Sets the backward engine.
@@ -29,8 +30,10 @@ class SingletonBackwardEngine:
         :raises Exception: If the engine is already set and override is False.
         :return: None
         """
-        if ((self.engine is not None) and (not override)):
-            raise Exception("Engine already set. Use override=True to override cautiously.")
+        if (self.engine is not None) and (not override):
+            raise Exception(
+                "Engine already set. Use override=True to override cautiously."
+            )
         self.engine = engine
 
     def get_engine(self):
@@ -42,6 +45,7 @@ class SingletonBackwardEngine:
         """
         return self.engine
 
+
 def set_backward_engine(engine: Union[EngineLM, str], override: bool = False):
     singleton_backward_engine = SingletonBackwardEngine()
     if isinstance(engine, str):
@@ -52,7 +56,8 @@ def set_backward_engine(engine: Union[EngineLM, str], override: bool = False):
 def validate_engine_or_get_default(engine):
     if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
         raise Exception(
-            "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine.")
+            "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
+        )
     elif engine is None:
         engine = SingletonBackwardEngine().get_engine()
     if isinstance(engine, str):

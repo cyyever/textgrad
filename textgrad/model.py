@@ -5,8 +5,13 @@ from textgrad.autograd.function import Module
 from textgrad.engine import EngineLM, get_engine
 from .config import SingletonBackwardEngine
 
+
 class BlackboxLLM(Module):
-    def __init__(self, engine: Union[EngineLM, str] = None, system_prompt: Union[Variable, str] = None):
+    def __init__(
+        self,
+        engine: Union[EngineLM, str] = None,
+        system_prompt: Union[Variable, str] = None,
+    ):
         """
         Initialize the LLM module.
 
@@ -15,15 +20,21 @@ class BlackboxLLM(Module):
         :param system_prompt: The system prompt variable, defaults to None.
         :type system_prompt: Variable, optional
         """
-        if ((engine is None) and (SingletonBackwardEngine().get_engine() is None)):
-            raise Exception("No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine.")
+        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
+            raise Exception(
+                "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
+            )
         elif engine is None:
             engine = SingletonBackwardEngine().get_engine()
         if isinstance(engine, str):
             engine = get_engine(engine)
         self.engine = engine
         if isinstance(system_prompt, str):
-            system_prompt = Variable(system_prompt, requires_grad=False, role_description="system prompt for the language model")
+            system_prompt = Variable(
+                system_prompt,
+                requires_grad=False,
+                role_description="system prompt for the language model",
+            )
         self.system_prompt = system_prompt
         self.llm_call = LLMCall(self.engine, self.system_prompt)
 
@@ -49,4 +60,3 @@ class BlackboxLLM(Module):
         :rtype: Variable
         """
         return self.llm_call(x)
-

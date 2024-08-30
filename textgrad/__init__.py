@@ -2,11 +2,14 @@ import os
 import logging
 import json
 from datetime import datetime
+
+
 class CustomJsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         super(CustomJsonFormatter, self).format(record)
         output = {k: str(v) for k, v in record.__dict__.items()}
         return json.dumps(output, indent=4)
+
 
 cf = CustomJsonFormatter()
 os.makedirs("./logs/", exist_ok=True)
