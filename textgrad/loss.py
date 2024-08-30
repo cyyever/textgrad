@@ -140,7 +140,7 @@ class MultiFieldEvaluation(Module):
         }
         return self.formatted_llm_call(
             inputs=inputs_call,
-            response_role_description=f"evaluation of the a prediction",
+            response_role_description="evaluation of the a prediction",
         )
 
 

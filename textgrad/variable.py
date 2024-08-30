@@ -376,7 +376,7 @@ def _backward_idempotent(
             variable_gradient_value = f"Here is the combined feedback we got for this specific {variable.get_role_description()} and other variables: {summation_gradients}."
 
         logger.info(
-            f"Idempotent backward",
+            "Idempotent backward",
             extra={
                 "v_gradient_value": variable_gradient_value,
                 "summation_role": summation.get_role_description(),
