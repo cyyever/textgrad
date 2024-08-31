@@ -1,24 +1,25 @@
-from textgrad import logger
-from textgrad.engine import EngineLM
-from typing import List, Set, Dict
-import httpx
 from collections import defaultdict
 from functools import partial
+from typing import Any, Callable, Dict, Iterable, Self, Set
+
+from graphviz import Digraph
+
+from textgrad import logger
+from textgrad.engine import EngineLM
+
 from .config import SingletonBackwardEngine
-from .utils.image_utils import is_valid_url
-from typing import Union
 
 
 class Variable:
     def __init__(
         self,
-        value: Union[str, bytes] = "",
+        value: str = "",
         image_path: str = "",
-        predecessors: List["Variable"] = None,
+        predecessors: list[Self] | None = None,
         requires_grad: bool = True,
         *,
         role_description: str,
-    ):
+    ) -> None:
         """The main thing. Nodes in the computation graph. Really the heart and soul of textgrad.
 
         :param value: The string value of this variable, defaults to "". In the future, we'll go multimodal, for sure!
@@ -38,17 +39,13 @@ class Variable:
 
         _predecessor_requires_grad = [v for v in predecessors if v.requires_grad]
 
-        if (not requires_grad) and (len(_predecessor_requires_grad) > 0):
+        if (not requires_grad) and len(_predecessor_requires_grad) > 0:
             raise Exception(
                 "If the variable does not require grad, none of its predecessors should require grad."
                 f"In this case, following predecessors require grad: {_predecessor_requires_grad}"
             )
 
-        assert type(value) in [
-            str,
-            bytes,
-            int,
-        ], "Value must be a string, int, or image (bytes). Got: {}".format(type(value))
+        assert isinstance(value, str | bytes | int)
         if isinstance(value, int):
             value = str(value)
         # We'll currently let "empty variables" slide, but we'll need to handle this better in the future.
@@ -59,38 +56,33 @@ class Variable:
                 "Please provide either a value or an image path for the variable, not both."
             )
 
+        self.value: str = value
         if image_path != "":
-            if is_valid_url(image_path):
-                self.value = httpx.get(image_path).content
-            else:
-                with open(image_path, "rb") as file:
-                    self.value = file.read()
-        else:
-            self.value = value
+            raise NotImplementedError(image_path)
 
-        self.gradients: Set[Variable] = set()
-        self.gradients_context: Dict[Variable, str] = defaultdict(lambda: None)
-        self.grad_fn = None
+        self.gradients: set[Variable] = set()
+        self.gradients_context: Dict[Variable, str | dict] = {}
+        self.grad_fn: None | Callable = None
         self.role_description = role_description
         self.predecessors = set(predecessors)
-        self.requires_grad = requires_grad
-        self._reduce_meta = []
+        self.requires_grad: bool = requires_grad
+        self._reduce_meta: list = []
 
-        if requires_grad and (type(value) == bytes):
+        if requires_grad and isinstance(value, bytes):
             raise ValueError(
                 "Gradients are not yet supported for image inputs. Please provide a string input instead."
             )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Variable(value={self.value}, role={self.get_role_description()}, grads={self.gradients})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
-    def __add__(self, to_add):
+    def __add__(self, to_add: Any) -> Any:
         # For now, let's just assume variables can be passed to models
         if isinstance(to_add, Variable):
-            ### Somehow handle the addition of variables
+            # Somehow handle the addition of variables
             total = Variable(
                 value=self.value + to_add.value,
                 # Add the predecessors of both variables
@@ -108,15 +100,14 @@ class Variable:
                 )
             )
             return total
-        else:
-            return to_add.__add__(self)
+        return to_add.__add__(self)
 
-    def set_role_description(self, role_description):
+    def set_role_description(self, role_description) -> None:
         self.role_description = role_description
 
     def reset_gradients(self):
         self.gradients = set()
-        self.gradients_context = dict()
+        self.gradients_context = {}
         self._reduce_meta = []
 
     def get_role_description(self) -> str:
@@ -139,16 +130,16 @@ class Variable:
         )
         return short_value
 
-    def get_value(self):
+    def get_value(self) -> str:
         return self.value
 
-    def set_value(self, value):
+    def set_value(self, value: str) -> None:
         self.value = value
 
-    def set_grad_fn(self, grad_fn):
+    def set_grad_fn(self, grad_fn: Callable) -> None:
         self.grad_fn = grad_fn
 
-    def get_grad_fn(self):
+    def get_grad_fn(self) -> Callable | None:
         return self.grad_fn
 
     def get_gradient_text(self) -> str:
@@ -156,7 +147,7 @@ class Variable:
 
         return "\n".join([g.value for g in self.gradients])
 
-    def backward(self, engine: EngineLM = None):
+    def backward(self, engine: EngineLM | None = None) -> None:
         """
         Backpropagate gradients through the computation graph starting from this variable.
 
@@ -166,11 +157,11 @@ class Variable:
         :raises Exception: If no backward engine is provided and no global engine is set.
         :raises Exception: If both an engine is provided and the global engine is set.
         """
-        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
+        if engine is None and SingletonBackwardEngine().get_engine() is None:
             raise Exception(
                 "No backward engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
             )
-        elif (engine is not None) and (
+        if (engine is not None) and (
             SingletonBackwardEngine().get_engine() is not None
         ):
             raise Exception(
@@ -181,9 +172,9 @@ class Variable:
         """Taken from https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py"""
         # topological order all the predecessors in the graph
         topo = []
-        visited = set()
+        visited: set[Self] = set()
 
-        def build_topo(v):
+        def build_topo(v: Self) -> None:
             if v not in visited:
                 visited.add(v)
                 for predecessor in v.predecessors:
@@ -199,24 +190,18 @@ class Variable:
         for v in reversed(topo):
             if v.requires_grad:
                 v.gradients = _check_and_reduce_gradients(v, backward_engine)
-                if v.get_grad_fn() is not None:
+                if v.grad_fn is not None:
                     v.grad_fn(backward_engine=backward_engine)
 
-    def generate_graph(self, print_gradients: bool = False):
+    def generate_graph(self, print_gradients: bool = False) -> Digraph:
         """
         Generates a computation graph starting from the variable itself.
 
         :param print_gradients: A boolean indicating whether to print gradients in the graph.
         :return: A visualization of the computation graph.
         """
-        try:
-            from graphviz import Digraph
-        except ImportError:
-            raise ImportError(
-                "Please install graphviz to visualize the computation graphs. You can install it using `pip install graphviz`."
-            )
 
-        def wrap_text(text, width=40):
+        def wrap_text(text: str, width: int = 40) -> str:
             """Wraps text at a given number of characters using HTML line breaks."""
             words = text.split()
             wrapped_text = ""
@@ -232,13 +217,13 @@ class Variable:
             wrapped_text += line
             return wrapped_text
 
-        def wrap_and_escape(text, width=40):
+        def wrap_and_escape(text: str, width: int = 40) -> str:
             return wrap_text(text.replace("<", "&lt;").replace(">", "&gt;"), width)
 
         topo = []
         visited = set()
 
-        def build_topo(v):
+        def build_topo(v: Self) -> None:
             if v not in visited:
                 visited.add(v)
                 for predecessor in v.predecessors:
@@ -253,7 +238,7 @@ class Variable:
         build_topo(self)
 
         graph = Digraph(
-            comment="Computation Graph starting from {}".format(self.role_description)
+            comment=f"Computation Graph starting from {self.role_description}"
         )
         graph.attr(rankdir="TB")  # Set the graph direction from top to bottom
         graph.attr(ranksep="0.2")  # Adjust the spacing between ranks
@@ -326,7 +311,9 @@ def _check_and_reduce_gradients(
         return variable.gradients
 
     id_to_gradient_set = defaultdict(set)
-    id_to_op = {}  # Note: there must be a way to ensure that the op is the same for all the variables with the same id
+    id_to_op = (
+        {}
+    )  # Note: there must be a way to ensure that the op is the same for all the variables with the same id
 
     # Go through each gradient, group them by their reduction groups
     for gradient in variable.gradients:
@@ -345,8 +332,8 @@ def _check_and_reduce_gradients(
 
 
 def _backward_idempotent(
-    variables: List[Variable], summation: Variable, backward_engine: EngineLM
-):
+    variables: Iterable[Variable], summation: Variable, backward_engine: EngineLM
+) -> None:
     """
     Perform an idempotent backward pass e.g. for textgrad.sum or Variable.__add__.
     In particular, this function backpropagates the gradients of the `summation` variable to all the variables in the `variables` list.

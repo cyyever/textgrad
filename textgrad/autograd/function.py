@@ -1,41 +1,36 @@
-from textgrad.variable import Variable
-from textgrad.engine import EngineLM
-
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any, Callable, Generator
+
+from textgrad.engine import EngineLM
+from textgrad.variable import Variable
 
 
 class Function(ABC):
     """
     The class to define a function that can be called and backpropagated through.
     """
-    
-    def __init__(self):
-        super().__init__()
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Variable:
         return self.forward(*args, **kwargs)
-    
+
     @abstractmethod
     def forward(self, *args, **kwargs) -> Variable:
         pass
-    
+
     @abstractmethod
     def backward(self, *args, **kwargs):
         pass
-    
+
 
 class BackwardContext:
     """
     Represents a context for backward computation.
 
     :param backward_fn: The backward function to be called during backward computation.
-    :type backward_fn: callable
     :param args: Variable length argument list to be passed to the backward function.
     :param kwargs: Arbitrary keyword arguments to be passed to the backward function.
 
     :ivar backward_fn: The backward function to be called during backward computation.
-    :vartype backward_fn: callable
     :ivar fn_name: The fully qualified name of the backward function.
     :vartype fn_name: str
     :ivar args: Variable length argument list to be passed to the backward function.
@@ -47,34 +42,39 @@ class BackwardContext:
         Returns a string representation of the BackwardContext object.
     """
 
-    def __init__(self, backward_fn, *args, **kwargs):
+    def __init__(self, backward_fn: Callable, *args, **kwargs) -> None:
         self.backward_fn = backward_fn
         self.fn_name = f"{backward_fn.__module__}.{backward_fn.__qualname__}"
         self.args = args
         self.kwargs = kwargs
 
     def __call__(self, backward_engine: EngineLM):
-        return self.backward_fn(*self.args, **self.kwargs, backward_engine=backward_engine)
+        return self.backward_fn(
+            *self.args, **self.kwargs, backward_engine=backward_engine
+        )
 
     def __repr__(self):
         return f"{self.fn_name}"
 
 
 class Module(ABC):
-    """Abstract module class with parameters akin to PyTorch's nn.Module.
-    """
-    parameters: List[Variable]
-    def zero_grad(self):
+    """Abstract module class with parameters akin to PyTorch's nn.Module."""
+
+    @abstractmethod
+    def parameters(self) -> list[Variable]:
+        pass
+
+    def zero_grad(self) -> None:
         for p in self.parameters():
             p.reset_gradients()
 
-    def named_parameters(self):
+    def named_parameters(self) -> Generator:
         for p in self.parameters():
             yield p.get_role_description(), p
-            
+
     @abstractmethod
-    def forward(self, *args, **kwargs):
+    def forward(self, *args: Any, **kwargs: Any) -> None:
         pass
-    
-    def __call__(self, *args, **kwargs):
+
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
         return self.forward(*args, **kwargs)

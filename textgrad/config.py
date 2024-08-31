@@ -1,25 +1,27 @@
+from typing import Self, Union
+
 from .engine import EngineLM, get_engine
-from typing import Union
 
 
 class SingletonBackwardEngine:
     """
     A singleton class representing the backward engine.
 
-    This class ensures that only one instance of the backward engine is created and provides methods to set and get the engine."""
+    This class ensures that only one instance of the backward engine is created and provides methods to set and get the engine.
+    """
 
     _instance = None
 
-    def __new__(cls):
-        if not cls._instance:
+    def __new__(cls) -> Self:
+        if cls._instance is None:
             cls._instance = super(SingletonBackwardEngine, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not hasattr(self, "engine"):
-            self.engine: EngineLM = None
+            self.engine: EngineLM | None = None
 
-    def set_engine(self, engine: EngineLM, override: bool = False):
+    def set_engine(self, engine: EngineLM, override: bool = False) -> None:
         """
         Sets the backward engine.
 
@@ -30,7 +32,7 @@ class SingletonBackwardEngine:
         :raises Exception: If the engine is already set and override is False.
         :return: None
         """
-        if (self.engine is not None) and (not override):
+        if self.engine is not None and not override:
             raise Exception(
                 "Engine already set. Use override=True to override cautiously."
             )
@@ -53,13 +55,14 @@ def set_backward_engine(engine: Union[EngineLM, str], override: bool = False):
     singleton_backward_engine.set_engine(engine, override=override)
 
 
-def validate_engine_or_get_default(engine):
-    if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
+def validate_engine_or_get_default(engine: EngineLM | str | None) -> EngineLM:
+    if engine is None and SingletonBackwardEngine().get_engine() is None:
         raise Exception(
             "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
         )
-    elif engine is None:
+    if engine is None:
         engine = SingletonBackwardEngine().get_engine()
     if isinstance(engine, str):
         engine = get_engine(engine)
+    assert engine is not None
     return engine

@@ -1,20 +1,24 @@
 import hashlib
-import diskcache as dc
 from abc import ABC, abstractmethod
+from typing import Any
+
+import diskcache as dc
+
 
 class EngineLM(ABC):
     system_prompt: str = "You are a helpful, creative, and smart assistant."
     model_string: str
+
     @abstractmethod
     def generate(self, prompt, system_prompt=None, **kwargs):
         pass
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Any:
         pass
 
 
 class CachedEngine:
-    def __init__(self, cache_path):
+    def __init__(self, cache_path: str) -> None:
         super().__init__()
         self.cache_path = cache_path
         self.cache = dc.Cache(cache_path)
@@ -34,7 +38,7 @@ class CachedEngine:
     def __getstate__(self):
         # Remove the cache from the state before pickling
         state = self.__dict__.copy()
-        del state['cache']
+        del state["cache"]
         return state
 
     def __setstate__(self, state):
