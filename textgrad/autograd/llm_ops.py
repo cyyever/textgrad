@@ -2,20 +2,21 @@ from typing import Iterable, List
 
 from textgrad import logger
 from textgrad.config import validate_engine_or_get_default
-from textgrad.defaults import (SYSTEM_PROMPT_DEFAULT_ROLE,
-                               VARIABLE_OUTPUT_DEFAULT_ROLE)
+from textgrad.defaults import SYSTEM_PROMPT_DEFAULT_ROLE, VARIABLE_OUTPUT_DEFAULT_ROLE
 from textgrad.engine import EngineLM
 from textgrad.variable import Variable
 
 from .function import BackwardContext, Function
-from .llm_backward_prompts import (BACKWARD_SYSTEM_PROMPT,
-                                   CONVERSATION_START_INSTRUCTION_BASE,
-                                   CONVERSATION_START_INSTRUCTION_CHAIN,
-                                   CONVERSATION_TEMPLATE,
-                                   EVALUATE_VARIABLE_INSTRUCTION,
-                                   IN_CONTEXT_EXAMPLE_PROMPT_ADDITION,
-                                   OBJECTIVE_INSTRUCTION_BASE,
-                                   OBJECTIVE_INSTRUCTION_CHAIN)
+from .llm_backward_prompts import (
+    BACKWARD_SYSTEM_PROMPT,
+    CONVERSATION_START_INSTRUCTION_BASE,
+    CONVERSATION_START_INSTRUCTION_CHAIN,
+    CONVERSATION_TEMPLATE,
+    EVALUATE_VARIABLE_INSTRUCTION,
+    IN_CONTEXT_EXAMPLE_PROMPT_ADDITION,
+    OBJECTIVE_INSTRUCTION_BASE,
+    OBJECTIVE_INSTRUCTION_CHAIN,
+)
 
 
 class LLMCall(Function):
@@ -378,7 +379,6 @@ class FormattedLLMCall(LLMCall):
 
 
 class LLMCall_with_in_context_examples(LLMCall):
-
     def forward(
         self,
         input_variable: Variable,

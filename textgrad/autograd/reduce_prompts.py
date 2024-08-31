@@ -6,6 +6,7 @@ REDUCE_MEAN_SYSTEM_PROMPT = (
     "When giving a response, only provide the core summary of the feedback. Do not recommend a new version for the variable -- only summarize the feedback critically. "
 )
 
+
 def construct_reduce_prompt(gradients):
     """
     Construct a prompt that reduces the gradients.
@@ -14,5 +15,5 @@ def construct_reduce_prompt(gradients):
     for i, gradient in enumerate(gradients):
         gradient_texts.append(f"<FEEDBACK>{gradient.get_value()}</FEEDBACK>")
     gradient_texts = "\n".join(gradient_texts)
-    
+
     return gradient_texts
