@@ -38,11 +38,9 @@ TGD_MULTIPART_PROMPT_INIT = (
     "Here is the context and feedback we got for the variable:\n\n"
 )
 
-TGD_MULTIPART_PROMPT_PREFIX = (
-    "Improve the variable ({variable_desc}) using the feedback provided in <FEEDBACK> tags.\n"
-)
+TGD_MULTIPART_PROMPT_PREFIX = "Improve the variable ({variable_desc}) using the feedback provided in <FEEDBACK> tags.\n"
 
-TGD_PROMPT_SUFFIX  = (
+TGD_PROMPT_SUFFIX = (
     "Send the improved variable "
     "in the following format:\n\n{new_variable_start_tag}{{the improved variable}}{new_variable_end_tag}\n\n"
     "Send ONLY the improved variable between the <IMPROVED_VARIABLE> tags, and nothing else."
@@ -51,7 +49,7 @@ TGD_PROMPT_SUFFIX  = (
 MOMENTUM_PROMPT_ADDITION = (
     "Here are the past iterations of this variable:\n\n"
     "<PAST_ITERATIONS>{past_values}</PAST_ITERATIONS>\n\n"
-    "Similar feedbacks across different steps suggests that the modifications to the variable are insufficient." 
+    "Similar feedbacks across different steps suggests that the modifications to the variable are insufficient."
     "If this is the case, please make more significant changes to the variable.\n\n"
 )
 
@@ -65,10 +63,13 @@ IN_CONTEXT_EXAMPLE_PROMPT_ADDITION = (
     "<EXAMPLES>{in_context_examples}</EXAMPLES>\n\n"
 )
 
-def construct_tgd_prompt(do_momentum: bool = False,
-                         do_constrained: bool = False,
-                         do_in_context_examples: bool = False,
-                         **optimizer_kwargs):
+
+def construct_tgd_prompt(
+    do_momentum: bool = False,
+    do_constrained: bool = False,
+    do_in_context_examples: bool = False,
+    **optimizer_kwargs,
+):
     """
     Construct the textual gradient descent prompt.
 
@@ -84,15 +85,17 @@ def construct_tgd_prompt(do_momentum: bool = False,
     """
 
     if isinstance(optimizer_kwargs["variable_grad"], str):
-        multipart=False
+        multipart = False
         prompt = TGD_PROMPT_PREFIX.format(**optimizer_kwargs)
-        
+
     else:
         gradient_context = optimizer_kwargs["variable_grad"]
-        gradient_context = [TGD_MULTIPART_PROMPT_INIT.format(**optimizer_kwargs)] + gradient_context
-        multipart=True
+        gradient_context = [
+            TGD_MULTIPART_PROMPT_INIT.format(**optimizer_kwargs)
+        ] + gradient_context
+        multipart = True
         prompt = TGD_MULTIPART_PROMPT_PREFIX.format(**optimizer_kwargs)
-           
+
     if do_momentum:
         prompt += MOMENTUM_PROMPT_ADDITION.format(**optimizer_kwargs)
 
@@ -106,9 +109,10 @@ def construct_tgd_prompt(do_momentum: bool = False,
 
     if not multipart:
         return prompt
-    
+
     else:
         return gradient_context + [prompt]
+
 
 # This is how we save gradients to the variable.
 GRADIENT_TEMPLATE = (
