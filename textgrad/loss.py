@@ -1,8 +1,10 @@
+from typing import List, Union
+
+from textgrad.autograd import (FormattedLLMCall, LLMCall, Module,
+                               OrderedFieldsMultimodalLLMCall)
 from textgrad.engine import EngineLM, get_engine
 from textgrad.variable import Variable
-from typing import List, Union
-from textgrad.autograd import LLMCall, FormattedLLMCall, OrderedFieldsMultimodalLLMCall
-from textgrad.autograd import Module
+
 from .config import SingletonBackwardEngine
 
 
@@ -10,8 +12,8 @@ class TextLoss(Module):
     def __init__(
         self,
         eval_system_prompt: Union[Variable, str],
-        engine: Union[EngineLM, str] = None,
-    ):
+        engine: Union[EngineLM, str] | None = None,
+    ) -> None:
         """
         A vanilla loss function to evaluate a response.
         In particular, this module is used to evaluate any given text object.
@@ -25,7 +27,7 @@ class TextLoss(Module):
         >>> from textgrad import get_engine, Variable
         >>> from textgrad.loss import TextLoss
         >>> engine = get_engine("gpt-4o")
-        >>> evaluation_instruction = Variable("Is ths a good joke?", requires_grad=False)
+        >>> evaluation_instruction = Variable("Is this a good joke?", requires_grad=False)
         >>> response_evaluator = TextLoss(evaluation_instruction, engine)
         >>> response = Variable("What did the fish say when it hit the wall? Dam.", requires_grad=True)
         >>> response_evaluator(response)
@@ -38,18 +40,19 @@ class TextLoss(Module):
                 role_description="system prompt for the evaluation",
             )
         self.eval_system_prompt = eval_system_prompt
-        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
+        if engine is None and SingletonBackwardEngine().get_engine() is None:
             raise Exception(
                 "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
             )
-        elif engine is None:
+        if engine is None:
             engine = SingletonBackwardEngine().get_engine()
         if isinstance(engine, str):
             engine = get_engine(engine)
-        self.engine = engine
-        self.llm_call = LLMCall(self.engine, self.eval_system_prompt)
+        assert engine is not None
+        self.engine: EngineLM = engine
+        self.llm_call: LLMCall = LLMCall(self.engine, self.eval_system_prompt)
 
-    def forward(self, instance: Variable):
+    def forward(self, instance: Variable) -> Variable:
         """
         Calls the ResponseEvaluation object.
 
@@ -65,9 +68,9 @@ class MultiFieldEvaluation(Module):
         self,
         evaluation_instruction: Variable,
         role_descriptions: List[str],
-        engine: Union[EngineLM, str] = None,
-        system_prompt: Variable = None,
-    ):
+        engine: Union[EngineLM, str] | None = None,
+        system_prompt: Variable | None = None,
+    ) -> None:
         """A module to compare two variables using a language model.
 
         :param evaluation_instruction: Instruction to use as prefix for the comparison, specifying the nature of the comparison.
@@ -86,15 +89,16 @@ class MultiFieldEvaluation(Module):
         """
         super().__init__()
         self.evaluation_instruction = evaluation_instruction
-        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
+        if engine is None and SingletonBackwardEngine().get_engine() is None:
             raise Exception(
                 "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
             )
-        elif engine is None:
+        if engine is None:
             engine = SingletonBackwardEngine().get_engine()
         if isinstance(engine, str):
             engine = get_engine(engine)
-        self.engine = engine
+        assert engine is not None
+        self.engine: EngineLM = engine
         self.role_descriptions = role_descriptions
         if system_prompt:
             self.system_prompt = system_prompt
@@ -128,7 +132,7 @@ class MultiFieldEvaluation(Module):
             system_prompt=self.system_prompt,
         )
 
-    def forward(self, inputs: List[Variable]):
+    def forward(self, inputs: List[Variable]) -> Variable:
         for role_description, var in zip(self.role_descriptions, inputs):
             var.set_role_description(role_description)
         inputs_call = {
@@ -149,10 +153,10 @@ class MultiFieldTokenParsedEvaluation(MultiFieldEvaluation):
         self,
         evaluation_instruction: Variable,
         role_descriptions: List[str],
-        engine: Union[EngineLM, str] = None,
-        system_prompt: Variable = None,
-        parse_tags: List[str] = None,
-    ):
+        engine: Union[EngineLM, str] | None = None,
+        system_prompt: Variable | None = None,
+        parse_tags: List[str] | None = None,
+    ) -> None:
         super().__init__(
             evaluation_instruction=evaluation_instruction,
             role_descriptions=role_descriptions,
