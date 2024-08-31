@@ -1,16 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import List, Union
 from collections import defaultdict
-from textgrad.variable import Variable
+from typing import List, Union
+
 from textgrad import logger
-from textgrad.engine import EngineLM
 from textgrad.config import validate_engine_or_get_default
-from .optimizer_prompts import (
-    construct_tgd_prompt,
-    OPTIMIZER_SYSTEM_PROMPT,
-    GRADIENT_TEMPLATE,
-    GRADIENT_MULTIPART_TEMPLATE,
-)
+from textgrad.engine import EngineLM
+from textgrad.variable import Variable
+
+from .optimizer_prompts import (GRADIENT_MULTIPART_TEMPLATE, GRADIENT_TEMPLATE,
+                                OPTIMIZER_SYSTEM_PROMPT, construct_tgd_prompt)
 
 
 def get_gradient_and_context_text(variable) -> Union[str, List[Union[str, bytes]]]:
@@ -65,15 +63,15 @@ class Optimizer(ABC):
         - step(): Performs a single optimization step.
     """
 
-    def __init__(self, parameters: List[Variable]):
+    def __init__(self, parameters: List[Variable]) -> None:
         for parameter in parameters:
-            if type(parameter.value) != str:
+            if not isinstance(parameter.value, str):
                 raise NotImplementedError(
                     f"We cannot yet update multimodal content and this data type: {type(parameter.value)}. We can only evaluate gradients using multimodal models. This may change soon (looking at you, GPT-5)."
                 )
         self.parameters = parameters
 
-    def zero_grad(self):
+    def zero_grad(self) -> None:
         """
         Clears the gradients of all parameters.
         """
@@ -81,11 +79,10 @@ class Optimizer(ABC):
             p.gradients = set()
 
     @abstractmethod
-    def step(self):
+    def step(self) -> None:
         """
         Performs a single optimization step.
         """
-        pass
 
 
 class TextualGradientDescent(Optimizer):
@@ -93,13 +90,13 @@ class TextualGradientDescent(Optimizer):
         self,
         parameters: List[Variable],
         verbose: int = 0,
-        engine: Union[EngineLM, str] = None,
-        constraints: List[str] = None,
-        new_variable_tags: List[str] = None,
+        engine: Union[EngineLM, str] | None = None,
+        constraints: List[str] | None = None,
+        new_variable_tags: List[str] | None = None,
         optimizer_system_prompt: str = OPTIMIZER_SYSTEM_PROMPT,
-        in_context_examples: List[str] = None,
+        in_context_examples: List[str] | None = None,
         gradient_memory: int = 0,
-    ):
+    ) -> None:
         """TextualGradientDescent optimizer
 
         :param engine: the engine to use for updating variables
@@ -148,7 +145,7 @@ class TextualGradientDescent(Optimizer):
         :rtype: str
         """
         constraints_ordered = [
-            f"Constraint {i+1}: {constraint}"
+            f"Constraint {i + 1}: {constraint}"
             for i, constraint in enumerate(self.constraints)
         ]
         return "\n".join(constraints_ordered)
@@ -156,10 +153,12 @@ class TextualGradientDescent(Optimizer):
     def get_gradient_memory_text(self, variable: Variable):
         grad_memory = ""
         variable_grad_memory = self.gradient_memory_dict[variable][
-            -self.gradient_memory :
+            -self.gradient_memory:
         ]
         for i, grad_info in enumerate(variable_grad_memory):
-            grad_memory += f"\n<FEEDBACK-{i+1}> {grad_info['value']}</FEEDBACK-{i+1}>\n"
+            grad_memory += (
+                f"\n<FEEDBACK-{i + 1}> {grad_info['value']}</FEEDBACK-{i + 1}>\n"
+            )
         return grad_memory
 
     def update_gradient_memory(self, variable: Variable):
@@ -191,7 +190,7 @@ class TextualGradientDescent(Optimizer):
         )
 
         logger.info(
-            f"TextualGradientDescent prompt for update", extra={"prompt": prompt}
+            "TextualGradientDescent prompt for update", extra={"prompt": prompt}
         )
         return prompt
 
@@ -209,7 +208,7 @@ class TextualGradientDescent(Optimizer):
                 prompt_update_parameter, system_prompt=self.optimizer_system_prompt
             )
             logger.info(
-                f"TextualGradientDescent optimizer response",
+                "TextualGradientDescent optimizer response",
                 extra={"optimizer.response": new_text},
             )
             try:
@@ -221,7 +220,7 @@ class TextualGradientDescent(Optimizer):
             # Check if we got a cannot be indexed error
             except IndexError:
                 logger.error(
-                    f"TextualGradientDescent optimizer response could not be indexed",
+                    "TextualGradientDescent optimizer response could not be indexed",
                     extra={"optimizer.response": new_text},
                 )
                 raise IndexError(
@@ -229,7 +228,7 @@ class TextualGradientDescent(Optimizer):
                 )
             parameter.set_value(new_value)
             logger.info(
-                f"TextualGradientDescent updated text",
+                "TextualGradientDescent updated text",
                 extra={"parameter.value": parameter.value},
             )
             if self.verbose:
@@ -248,11 +247,11 @@ class TextualGradientDescentwithMomentum(Optimizer):
         engine: Union[str, EngineLM],
         parameters: List[Variable],
         momentum_window: int = 0,
-        constraints: List[str] = None,
-        new_variable_tags: List[str] = None,
-        in_context_examples: List[str] = None,
+        constraints: List[str] | None = None,
+        new_variable_tags: List[str] | None = None,
+        in_context_examples: List[str] | None = None,
         optimizer_system_prompt: str = OPTIMIZER_SYSTEM_PROMPT,
-    ):
+    ) -> None:
         super().__init__(parameters)
 
         if new_variable_tags is None:
@@ -288,7 +287,7 @@ class TextualGradientDescentwithMomentum(Optimizer):
     @property
     def constraint_text(self):
         constraints_ordered = [
-            f"Constraint {i+1}: {constraint}"
+            f"Constraint {i + 1}: {constraint}"
             for i, constraint in enumerate(self.constraints)
         ]
         return "\n".join(constraints_ordered)
@@ -322,7 +321,7 @@ class TextualGradientDescentwithMomentum(Optimizer):
         )
 
         logger.info(
-            f"TextualGradientwithMomentum prompt for update", extra={"prompt": prompt}
+            "TextualGradientwithMomentum prompt for update", extra={"prompt": prompt}
         )
 
     def _update_momentum_storage(self, variable: Variable, momentum_storage_idx: int):
@@ -346,7 +345,7 @@ class TextualGradientDescentwithMomentum(Optimizer):
                 prompt_update_parameter, system_prompt=self.optimizer_system_prompt
             )
             logger.info(
-                f"TextualGradientDescentwithMomentum optimizer response",
+                "TextualGradientDescentwithMomentum optimizer response",
                 extra={"optimizer.response": new_text},
             )
             try:
@@ -358,7 +357,7 @@ class TextualGradientDescentwithMomentum(Optimizer):
             # Check if we got a cannot be indexed error
             except IndexError:
                 logger.error(
-                    f"TextualGradientDescent optimizer response could not be indexed",
+                    "TextualGradientDescent optimizer response could not be indexed",
                     extra={"optimizer.response": new_text},
                 )
                 raise IndexError(
@@ -366,6 +365,6 @@ class TextualGradientDescentwithMomentum(Optimizer):
                 )
             parameter.set_value(new_value)
             logger.info(
-                f"TextualGradientDescentwithMomentum updated text",
+                "TextualGradientDescentwithMomentum updated text",
                 extra={"parameter.value": parameter.value},
             )
