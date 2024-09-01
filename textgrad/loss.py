@@ -2,17 +2,15 @@ from typing import List, Union
 
 from textgrad.autograd import (FormattedLLMCall, LLMCall, Module,
                                OrderedFieldsMultimodalLLMCall)
-from textgrad.engine import EngineLM, get_engine
+from textgrad.engine import EngineLM
 from textgrad.variable import Variable
-
-from .config import SingletonBackwardEngine
 
 
 class TextLoss(Module):
     def __init__(
         self,
         eval_system_prompt: Union[Variable, str],
-        engine: Union[EngineLM, str] | None = None,
+        engine: EngineLM | str | None = None,
     ) -> None:
         """
         A vanilla loss function to evaluate a response.
@@ -32,7 +30,7 @@ class TextLoss(Module):
         >>> response = Variable("What did the fish say when it hit the wall? Dam.", requires_grad=True)
         >>> response_evaluator(response)
         """
-        super().__init__()
+        super().__init__(engine=engine)
         if isinstance(eval_system_prompt, str):
             eval_system_prompt = Variable(
                 eval_system_prompt,
@@ -40,16 +38,6 @@ class TextLoss(Module):
                 role_description="system prompt for the evaluation",
             )
         self.eval_system_prompt = eval_system_prompt
-        if engine is None and SingletonBackwardEngine().get_engine() is None:
-            raise Exception(
-                "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        if engine is None:
-            engine = SingletonBackwardEngine().get_engine()
-        if isinstance(engine, str):
-            engine = get_engine(engine)
-        assert engine is not None
-        self.engine: EngineLM = engine
         self.llm_call: LLMCall = LLMCall(self.engine, self.eval_system_prompt)
 
     def forward(self, instance: Variable) -> Variable:
@@ -68,7 +56,7 @@ class MultiFieldEvaluation(Module):
         self,
         evaluation_instruction: Variable,
         role_descriptions: List[str],
-        engine: Union[EngineLM, str] | None = None,
+        engine: EngineLM | str | None = None,
         system_prompt: Variable | None = None,
     ) -> None:
         """A module to compare two variables using a language model.
@@ -87,18 +75,8 @@ class MultiFieldEvaluation(Module):
         :example:
         TODO: Add an example
         """
-        super().__init__()
+        super().__init__(engine=engine)
         self.evaluation_instruction = evaluation_instruction
-        if engine is None and SingletonBackwardEngine().get_engine() is None:
-            raise Exception(
-                "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        if engine is None:
-            engine = SingletonBackwardEngine().get_engine()
-        if isinstance(engine, str):
-            engine = get_engine(engine)
-        assert engine is not None
-        self.engine: EngineLM = engine
         self.role_descriptions = role_descriptions
         if system_prompt:
             self.system_prompt = system_prompt
@@ -190,9 +168,9 @@ class MultiChoiceTestTime(Module):
     def __init__(
         self,
         evaluation_instruction: str,
-        engine: Union[EngineLM, str] = None,
+        engine: EngineLM | str | None = None,
         system_prompt: Variable = None,
-    ):
+    ) -> None:
         """
         The test-time loss to use when working on a response to a multiple choice question.
 
@@ -203,7 +181,7 @@ class MultiChoiceTestTime(Module):
         :param system_prompt: System prompt for the test-time loss computation, defaults to None
         :type system_prompt: Variable, optional
         """
-        super().__init__()
+        super().__init__(engine=engine)
         if system_prompt:
             self.tt_system_prompt = system_prompt
         else:
@@ -214,18 +192,9 @@ class MultiChoiceTestTime(Module):
                 role_description="system prompt for the test-time evaluation",
             )
 
-        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
-            raise Exception(
-                "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        elif engine is None:
-            engine = SingletonBackwardEngine().get_engine()
-        if isinstance(engine, str):
-            engine = get_engine(engine)
-        self.engine = engine
         format_string = "{instruction}\nQuestion: {{question}}\nAnswer by the language model: {{prediction}}"
         self.format_string = format_string.format(instruction=evaluation_instruction)
-        self.fields = {"prediction": None, "question": None}
+        self.fields: dict = {"prediction": None, "question": None}
         self.formatted_llm_call = FormattedLLMCall(
             engine=self.engine,
             format_string=self.format_string,
@@ -251,25 +220,16 @@ class ImageQALoss(Module):
     def __init__(
         self,
         evaluation_instruction: str,
-        engine: Union[EngineLM, str] = None,
-        system_prompt: Variable = None,
+        engine: Union[EngineLM, str] | None = None,
+        system_prompt: Variable | None = None,
     ):
-        super().__init__()
+        super().__init__(engine=engine)
         self.evaluation_instruction = Variable(
             evaluation_instruction,
             role_description="evaluation instruction",
             requires_grad=False,
         )
-        if (engine is None) and (SingletonBackwardEngine().get_engine() is None):
-            raise Exception(
-                "No engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        elif engine is None:
-            engine = SingletonBackwardEngine().get_engine()
-        if isinstance(engine, str):
-            engine = get_engine(engine)
-        self.engine = engine
-        if system_prompt:
+        if system_prompt is not None:
             self.system_prompt = system_prompt
         else:
             self.system_prompt = Variable(

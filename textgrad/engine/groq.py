@@ -1,7 +1,9 @@
 try:
     from groq import Groq
 except ImportError:
-    raise ImportError("If you'd like to use Groq models, please install the groq package by running `pip install groq`, and add 'GROQ_API_KEY' to your environment variables.")
+    raise ImportError(
+        "If you'd like to use Groq models, please install the groq package by running `pip install groq`, and add 'GROQ_API_KEY' to your environment variables."
+    )
 
 import os
 import json
@@ -24,9 +26,10 @@ class ChatGroq(ChatOpenAI):
 
     def __init__(
         self,
-        model_string: str="groq-llama3-70b-8192",
-        system_prompt: str=DEFAULT_SYSTEM_PROMPT,
-        **kwargs):
+        model_string: str = "groq-llama3-70b-8192",
+        system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+        **kwargs,
+    ):
         """
         :param model_string:
         :param system_prompt:
@@ -35,13 +38,13 @@ class ChatGroq(ChatOpenAI):
         root = platformdirs.user_cache_dir("textgrad")
         cache_path = os.path.join(root, f"cache_groq_{model_string}.db")
         CachedEngine.__init__(self, cache_path=cache_path)
-        
+
         if os.getenv("GROQ_API_KEY") is None:
-            raise ValueError("Please set the GROQ_API_KEY environment variable if you'd like to use Groq models.")
-        self.client = Groq(
-            api_key=os.getenv("GROQ_API_KEY")
-        )
-        
+            raise ValueError(
+                "Please set the GROQ_API_KEY environment variable if you'd like to use Groq models."
+            )
+        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
         self.model_string = model_string
         self.system_prompt = system_prompt
         assert isinstance(self.system_prompt, str)

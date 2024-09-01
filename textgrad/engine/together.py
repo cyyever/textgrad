@@ -1,7 +1,9 @@
 try:
     from together import Together
 except ImportError:
-    raise ImportError("If you'd like to use OpenAI models, please install the openai package by running `pip install together`, and add 'TOGETHER_API_KEY' to your environment variables.")
+    raise ImportError(
+        "If you'd like to use OpenAI models, please install the openai package by running `pip install together`, and add 'TOGETHER_API_KEY' to your environment variables."
+    )
 
 import os
 import platformdirs
@@ -13,13 +15,15 @@ from tenacity import (
 
 from .base import EngineLM, CachedEngine
 
+
 class ChatTogether(EngineLM, CachedEngine):
     DEFAULT_SYSTEM_PROMPT = "You are a helpful, creative, and smart assistant."
 
     def __init__(
         self,
         model_string="meta-llama/Llama-3-70b-chat-hf",
-        system_prompt=DEFAULT_SYSTEM_PROMPT):
+        system_prompt=DEFAULT_SYSTEM_PROMPT,
+    ):
         """
         :param model_string:
         :param system_prompt:
@@ -30,8 +34,10 @@ class ChatTogether(EngineLM, CachedEngine):
 
         self.system_prompt = system_prompt
         if os.getenv("TOGETHER_API_KEY") is None:
-            raise ValueError("Please set the TOGETHER_API_KEY environment variable if you'd like to use OpenAI models.")
-        
+            raise ValueError(
+                "Please set the TOGETHER_API_KEY environment variable if you'd like to use OpenAI models."
+            )
+
         self.client = Together(
             api_key=os.getenv("TOGETHER_API_KEY"),
         )
@@ -40,7 +46,6 @@ class ChatTogether(EngineLM, CachedEngine):
     def generate(
         self, prompt, system_prompt=None, temperature=0, max_tokens=2000, top_p=0.99
     ):
-
         sys_prompt_arg = system_prompt if system_prompt else self.system_prompt
 
         cache_or_none = self._check_cache(sys_prompt_arg + prompt)
@@ -68,4 +73,3 @@ class ChatTogether(EngineLM, CachedEngine):
     @retry(wait=wait_random_exponential(min=1, max=5), stop=stop_after_attempt(5))
     def __call__(self, prompt, **kwargs):
         return self.generate(prompt, **kwargs)
-

@@ -29,8 +29,7 @@ class CachedEngine:
     def _check_cache(self, prompt: str):
         if prompt in self.cache:
             return self.cache[prompt]
-        else:
-            return None
+        return None
 
     def _save_cache(self, prompt: str, response: str):
         self.cache[prompt] = response

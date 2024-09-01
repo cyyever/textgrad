@@ -7,15 +7,13 @@ from graphviz import Digraph
 from textgrad import logger
 from textgrad.engine import EngineLM
 
-from .config import SingletonBackwardEngine
-
 
 class Variable:
     def __init__(
         self,
         value: str = "",
         image_path: str = "",
-        predecessors: list[Self] | None = None,
+        predecessors: set[Self] | None = None,
         requires_grad: bool = True,
         *,
         role_description: str,
@@ -35,7 +33,7 @@ class Variable:
         """
 
         if predecessors is None:
-            predecessors = []
+            predecessors = set()
 
         _predecessor_requires_grad = [v for v in predecessors if v.requires_grad]
 
@@ -64,7 +62,7 @@ class Variable:
         self.gradients_context: Dict[Variable, str | dict] = {}
         self.grad_fn: None | Callable = None
         self.role_description = role_description
-        self.predecessors = set(predecessors)
+        self.predecessors = predecessors
         self.requires_grad: bool = requires_grad
         self._reduce_meta: list = []
 
@@ -86,7 +84,7 @@ class Variable:
             total = Variable(
                 value=self.value + to_add.value,
                 # Add the predecessors of both variables
-                predecessors=[self, to_add],
+                predecessors={self, to_add},
                 # Communicate both of the roles
                 role_description=f"{self.role_description} and {to_add.role_description}",
                 # We should require grad if either of the variables require grad
@@ -147,7 +145,7 @@ class Variable:
 
         return "\n".join([g.value for g in self.gradients])
 
-    def backward(self, engine: EngineLM | None = None) -> None:
+    def backward(self, engine: EngineLM) -> None:
         """
         Backpropagate gradients through the computation graph starting from this variable.
 
@@ -157,18 +155,8 @@ class Variable:
         :raises Exception: If no backward engine is provided and no global engine is set.
         :raises Exception: If both an engine is provided and the global engine is set.
         """
-        if engine is None and SingletonBackwardEngine().get_engine() is None:
-            raise Exception(
-                "No backward engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        if (engine is not None) and (
-            SingletonBackwardEngine().get_engine() is not None
-        ):
-            raise Exception(
-                "Both an engine is provided and the global engine is set. Be careful when doing this."
-            )
 
-        backward_engine = engine if engine else SingletonBackwardEngine().get_engine()
+        backward_engine = engine
         """Taken from https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py"""
         # topological order all the predecessors in the graph
         topo = []

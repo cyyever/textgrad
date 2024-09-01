@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generator
 
-from textgrad.engine import EngineLM
+from textgrad.engine import EngineLM, get_engine
 from textgrad.variable import Variable
+
+from ..config import SingletonBackwardEngine
 
 
 class Function(ABC):
@@ -18,7 +20,7 @@ class Function(ABC):
         pass
 
     @abstractmethod
-    def backward(self, *args, **kwargs):
+    def backward(self, *args, **kwargs) -> None:
         pass
 
 
@@ -53,12 +55,27 @@ class BackwardContext:
             *self.args, **self.kwargs, backward_engine=backward_engine
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.fn_name}"
 
 
 class Module(ABC):
     """Abstract module class with parameters akin to PyTorch's nn.Module."""
+
+    def __init__(
+        self,
+        engine: EngineLM | str | None = None,
+    ) -> None:
+        """
+        :param engine: The language model to use for the comparison.
+        :type engine: EngineLM
+        """
+        if engine is None:
+            engine = SingletonBackwardEngine().get_engine()
+        if isinstance(engine, str):
+            engine = get_engine(engine)
+        assert engine is not None
+        self.engine: EngineLM = engine
 
     @abstractmethod
     def parameters(self) -> list[Variable]:
