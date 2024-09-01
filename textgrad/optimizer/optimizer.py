@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import List, Union
 
 from textgrad import logger
-from textgrad.config import validate_engine_or_get_default
 from textgrad.engine import EngineLM
 from textgrad.variable import Variable
 
@@ -47,8 +46,7 @@ def get_gradient_and_context_text(variable) -> Union[str, List[Union[str, bytes]
     # Check if all instances are string
     if all(isinstance(i, str) for i in gradient_content):
         return "\n".join(gradient_content)
-    else:
-        return gradient_content
+    return gradient_content
 
 
 class Optimizer(ABC):
@@ -89,8 +87,8 @@ class TextualGradientDescent(Optimizer):
     def __init__(
         self,
         parameters: List[Variable],
-        verbose: int = 0,
-        engine: Union[EngineLM, str] | None = None,
+        engine: EngineLM,
+        verbose: bool = False,
         constraints: List[str] | None = None,
         new_variable_tags: List[str] | None = None,
         optimizer_system_prompt: str = OPTIMIZER_SYSTEM_PROMPT,
@@ -119,7 +117,7 @@ class TextualGradientDescent(Optimizer):
         if new_variable_tags is None:
             new_variable_tags = ["<IMPROVED_VARIABLE>", "</IMPROVED_VARIABLE>"]
 
-        self.engine = validate_engine_or_get_default(engine)
+        self.engine = engine
         self.verbose = verbose
         self.constraints = constraints if constraints is not None else []
         self.optimizer_system_prompt = optimizer_system_prompt.format(
@@ -133,7 +131,7 @@ class TextualGradientDescent(Optimizer):
         )
         self.do_in_context_examples = len(self.in_context_examples) > 0
         self.gradient_memory = gradient_memory
-        self.gradient_memory_dict = defaultdict(list)
+        self.gradient_memory_dict: dict = defaultdict(list)
         self.do_gradient_memory = gradient_memory > 0
 
     @property
@@ -244,7 +242,7 @@ class TextualGradientDescent(Optimizer):
 class TextualGradientDescentwithMomentum(Optimizer):
     def __init__(
         self,
-        engine: Union[str, EngineLM],
+        engine: EngineLM,
         parameters: List[Variable],
         momentum_window: int = 0,
         constraints: List[str] | None = None,
@@ -257,15 +255,12 @@ class TextualGradientDescentwithMomentum(Optimizer):
         if new_variable_tags is None:
             new_variable_tags = ["<IMPROVED_VARIABLE>", "</IMPROVED_VARIABLE>"]
 
-        self.engine = validate_engine_or_get_default(engine)
+        self.engine = engine
 
-        if momentum_window == 0:
-            return TextualGradientDescent(
-                engine=engine, parameters=parameters, constraints=constraints
-            )
+        assert momentum_window > 0
 
         # Each item in the momentum storage will include past value and the criticism
-        self.momentum_storage = [[] for _ in range(len(parameters))]
+        self.momentum_storage: list = [[] for _ in range(len(parameters))]
         self.momentum_window = momentum_window
         self.do_momentum = True
         self.constraints = constraints if constraints is not None else []

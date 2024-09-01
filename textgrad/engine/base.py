@@ -23,16 +23,15 @@ class CachedEngine:
         self.cache_path = cache_path
         self.cache = dc.Cache(cache_path)
 
-    def _hash_prompt(self, prompt: str):
+    def _hash_prompt(self, prompt: str) -> str:
         return hashlib.sha256(f"{prompt}".encode()).hexdigest()
 
-    def _check_cache(self, prompt: str):
+    def _check_cache(self, prompt: str) -> str:
         if prompt in self.cache:
             return self.cache[prompt]
-        else:
-            return None
+        return None
 
-    def _save_cache(self, prompt: str, response: str):
+    def _save_cache(self, prompt: str, response: str) -> None:
         self.cache[prompt] = response
 
     def __getstate__(self):

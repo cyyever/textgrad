@@ -4,10 +4,9 @@ from typing import Any, Callable, Dict, Iterable, Self, Set
 
 from graphviz import Digraph
 
-from textgrad import logger
-from textgrad.engine import EngineLM
+from .logger import logger
 
-from .config import SingletonBackwardEngine
+from .engine import EngineLM
 
 
 class Variable:
@@ -15,7 +14,7 @@ class Variable:
         self,
         value: str = "",
         image_path: str = "",
-        predecessors: list[Self] | None = None,
+        predecessors: set[Self] | None = None,
         requires_grad: bool = True,
         *,
         role_description: str,
@@ -35,7 +34,7 @@ class Variable:
         """
 
         if predecessors is None:
-            predecessors = []
+            predecessors = set()
 
         _predecessor_requires_grad = [v for v in predecessors if v.requires_grad]
 
@@ -64,9 +63,9 @@ class Variable:
         self.gradients_context: Dict[Variable, str | dict] = {}
         self.grad_fn: None | Callable = None
         self.role_description = role_description
-        self.predecessors = set(predecessors)
+        self.predecessors = predecessors
         self.requires_grad: bool = requires_grad
-        self._reduce_meta: list = []
+        self.reduce_meta: list = []
 
         if requires_grad and isinstance(value, bytes):
             raise ValueError(
@@ -86,7 +85,7 @@ class Variable:
             total = Variable(
                 value=self.value + to_add.value,
                 # Add the predecessors of both variables
-                predecessors=[self, to_add],
+                predecessors={self, to_add},
                 # Communicate both of the roles
                 role_description=f"{self.role_description} and {to_add.role_description}",
                 # We should require grad if either of the variables require grad
@@ -108,7 +107,7 @@ class Variable:
     def reset_gradients(self):
         self.gradients = set()
         self.gradients_context = {}
-        self._reduce_meta = []
+        self.reduce_meta = []
 
     def get_role_description(self) -> str:
         return self.role_description
@@ -147,7 +146,7 @@ class Variable:
 
         return "\n".join([g.value for g in self.gradients])
 
-    def backward(self, engine: EngineLM | None = None) -> None:
+    def backward(self, engine: EngineLM) -> None:
         """
         Backpropagate gradients through the computation graph starting from this variable.
 
@@ -157,18 +156,8 @@ class Variable:
         :raises Exception: If no backward engine is provided and no global engine is set.
         :raises Exception: If both an engine is provided and the global engine is set.
         """
-        if engine is None and SingletonBackwardEngine().get_engine() is None:
-            raise Exception(
-                "No backward engine provided. Either provide an engine as the argument to this call, or use `textgrad.set_backward_engine(engine)` to set the backward engine."
-            )
-        if (engine is not None) and (
-            SingletonBackwardEngine().get_engine() is not None
-        ):
-            raise Exception(
-                "Both an engine is provided and the global engine is set. Be careful when doing this."
-            )
 
-        backward_engine = engine if engine else SingletonBackwardEngine().get_engine()
+        backward_engine = engine
         """Taken from https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py"""
         # topological order all the predecessors in the graph
         topo = []
@@ -257,8 +246,8 @@ class Variable:
             if v.grad_fn is not None:
                 node_label += f"<br/><b><font color='{label_color}'>Grad Fn: </font></b> {wrap_and_escape(get_grad_fn_name(str(v.grad_fn)))}"
 
-            if v._reduce_meta != []:
-                node_label += f"<br/><b><font color='{label_color}'>Reduce Meta: </font></b> {wrap_and_escape(str(v._reduce_meta))}"
+            if v.reduce_meta != []:
+                node_label += f"<br/><b><font color='{label_color}'>Reduce Meta: </font></b> {wrap_and_escape(str(v.reduce_meta))}"
 
             if print_gradients:
                 node_label += f"<br/><b><font color='{label_color}'>Gradients: </font></b> {wrap_and_escape(v.get_gradient_text())}"
@@ -302,7 +291,7 @@ def _check_and_reduce_gradients(
     :return: The reduced gradients for the variable.
     :rtype: Set[Variable]
     """
-    if variable._reduce_meta == []:
+    if not variable.reduce_meta:
         return variable.gradients
     if variable.get_gradient_text() == "":
         return variable.gradients
@@ -317,7 +306,7 @@ def _check_and_reduce_gradients(
 
     # Go through each gradient, group them by their reduction groups
     for gradient in variable.gradients:
-        for reduce_item in gradient._reduce_meta:
+        for reduce_item in gradient.reduce_meta:
             id_to_gradient_set[reduce_item["id"]].add(gradient)
             id_to_op[reduce_item["id"]] = reduce_item["op"]
     # For each reduction group, perform the reduction operation
@@ -353,7 +342,7 @@ def _backward_idempotent(
         - The feedback from each variable is stored in their respective gradients.
         - The feedback from the `summation` variable is combined and stored in the `summation_gradients` variable.
         - The feedback from each variable is later used for feedback propagation to other variables in the computation graph.
-        - The `_reduce_meta` attribute of the `summation` variable is used to reduce the feedback if specified.
+        - The `reduce_meta` attribute of the `summation` variable is used to reduce the feedback if specified.
     """
     summation_gradients = summation.get_gradient_text()
     for variable in variables:
@@ -376,9 +365,9 @@ def _backward_idempotent(
         )
         variable.gradients.add(var_gradients)
 
-        if summation._reduce_meta != []:
-            var_gradients._reduce_meta.extend(summation._reduce_meta)
-            variable._reduce_meta.extend(summation._reduce_meta)
+        if not summation.reduce_meta:
+            var_gradients.reduce_meta.extend(summation.reduce_meta)
+            variable.reduce_meta.extend(summation.reduce_meta)
 
         variable.gradients.add(
             Variable(

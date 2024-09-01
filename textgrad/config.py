@@ -38,13 +38,14 @@ class SingletonBackwardEngine:
             )
         self.engine = engine
 
-    def get_engine(self):
+    def get_engine(self) -> EngineLM:
         """
         Returns the backward engine.
 
         :return: The backward engine.
         :rtype: EngineLM
         """
+        assert self.engine is not None
         return self.engine
 
 

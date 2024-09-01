@@ -1,3 +1,5 @@
+from typing import Iterable
+
 REDUCE_MEAN_SYSTEM_PROMPT = (
     "You are part of an optimization system that improves a given text (i.e. the variable). "
     "Your only responsibility is to critically aggregate and summarize the feedback from sources. "
@@ -7,13 +9,11 @@ REDUCE_MEAN_SYSTEM_PROMPT = (
 )
 
 
-def construct_reduce_prompt(gradients):
+def construct_reduce_prompt(gradients: Iterable) -> str:
     """
     Construct a prompt that reduces the gradients.
     """
-    gradient_texts = []
-    for i, gradient in enumerate(gradients):
+    gradient_texts: list[str] = []
+    for gradient in gradients:
         gradient_texts.append(f"<FEEDBACK>{gradient.get_value()}</FEEDBACK>")
-    gradient_texts = "\n".join(gradient_texts)
-
-    return gradient_texts
+    return "\n".join(gradient_texts)
