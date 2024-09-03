@@ -8,7 +8,7 @@ GLOSSARY_TEXT = """
 # - <FOCUS>: The focus of the optimization.
 # - <ROLE>: The role description of the variable."""
 
-### Optimize Prompts
+# Optimize Prompts
 
 # System prompt to TGD
 OPTIMIZER_SYSTEM_PROMPT = (
@@ -69,7 +69,7 @@ def construct_tgd_prompt(
     do_constrained: bool = False,
     do_in_context_examples: bool = False,
     **optimizer_kwargs,
-):
+) -> str | list[str]:
     """
     Construct the textual gradient descent prompt.
 
@@ -84,6 +84,7 @@ def construct_tgd_prompt(
     :rtype: str
     """
 
+    gradient_context = []
     if isinstance(optimizer_kwargs["variable_grad"], str):
         multipart = False
         prompt = TGD_PROMPT_PREFIX.format(**optimizer_kwargs)
@@ -110,8 +111,8 @@ def construct_tgd_prompt(
     if not multipart:
         return prompt
 
-    else:
-        return gradient_context + [prompt]
+    assert isinstance(gradient_context, list)
+    return gradient_context + [prompt]
 
 
 # This is how we save gradients to the variable.

@@ -77,9 +77,8 @@ class Module(ABC):
         assert engine is not None
         self.engine: EngineLM = engine
 
-    @abstractmethod
     def parameters(self) -> list[Variable]:
-        pass
+        return []
 
     def zero_grad(self) -> None:
         for p in self.parameters():

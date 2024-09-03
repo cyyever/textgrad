@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import List, Union
 
+from ..config import validate_engine_or_get_default
 from ..engine import EngineLM
 from ..logger import logger
 from ..variable import Variable
@@ -9,7 +10,9 @@ from .optimizer_prompts import (GRADIENT_MULTIPART_TEMPLATE, GRADIENT_TEMPLATE,
                                 OPTIMIZER_SYSTEM_PROMPT, construct_tgd_prompt)
 
 
-def get_gradient_and_context_text(variable) -> Union[str, List[Union[str, bytes]]]:
+def get_gradient_and_context_text(
+    variable: Variable,
+) -> Union[str, List[Union[str, bytes]]]:
     """For the variable, aggregates and returns
     i. the gradients
     ii. the context for which the gradients are computed.
@@ -86,7 +89,7 @@ class TextualGradientDescent(Optimizer):
     def __init__(
         self,
         parameters: List[Variable],
-        engine: EngineLM,
+        engine: EngineLM | None = None,
         verbose: bool = False,
         constraints: List[str] | None = None,
         new_variable_tags: List[str] | None = None,
@@ -116,7 +119,7 @@ class TextualGradientDescent(Optimizer):
         if new_variable_tags is None:
             new_variable_tags = ["<IMPROVED_VARIABLE>", "</IMPROVED_VARIABLE>"]
 
-        self.engine = engine
+        self.engine = validate_engine_or_get_default(engine)
         self.verbose = verbose
         self.constraints = constraints if constraints is not None else []
         self.optimizer_system_prompt = optimizer_system_prompt.format(
@@ -163,7 +166,7 @@ class TextualGradientDescent(Optimizer):
             {"value": variable.get_gradient_text()}
         )
 
-    def _update_prompt(self, variable: Variable) -> Union[str, List[Union[str, bytes]]]:
+    def _update_prompt(self, variable: Variable) -> str | list[str]:
         grad_memory = self.get_gradient_memory_text(variable)
         optimizer_information = {
             "variable_desc": variable.get_role_description(),
@@ -191,7 +194,7 @@ class TextualGradientDescent(Optimizer):
         )
         return prompt
 
-    def step(self):
+    def step(self) -> None:
         """
         Perform a single optimization step.
         This method updates the parameters of the optimizer by generating new text using the engine and updating the parameter values accordingly.
@@ -201,6 +204,7 @@ class TextualGradientDescent(Optimizer):
         """
         for parameter in self.parameters:
             prompt_update_parameter = self._update_prompt(parameter)
+            assert isinstance(prompt_update_parameter, str)
             new_text = self.engine(
                 prompt_update_parameter, system_prompt=self.optimizer_system_prompt
             )
@@ -336,7 +340,7 @@ class TextualGradientDescentwithMomentum(Optimizer):
                 parameter, momentum_storage_idx=idx
             )
             new_text = self.engine(
-                prompt_update_parameter, system_prompt=self.optimizer_system_prompt
+                prompt_update_parameter, prompt=self.optimizer_system_prompt
             )
             logger.info(
                 "TextualGradientDescentwithMomentum optimizer response",
