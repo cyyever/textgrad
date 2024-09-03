@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import List, Union
 
-from textgrad import logger
-from textgrad.engine import EngineLM
-from textgrad.variable import Variable
-
+from ..engine import EngineLM
+from ..logger import logger
+from ..variable import Variable
 from .optimizer_prompts import (GRADIENT_MULTIPART_TEMPLATE, GRADIENT_TEMPLATE,
                                 OPTIMIZER_SYSTEM_PROMPT, construct_tgd_prompt)
 

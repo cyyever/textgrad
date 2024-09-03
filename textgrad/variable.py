@@ -4,15 +4,14 @@ from typing import Any, Callable, Dict, Iterable, Self, Set
 
 from graphviz import Digraph
 
-from textgrad import logger
-from textgrad.engine import EngineLM
+from .engine import EngineLM
+from .logger import logger
 
 
 class Variable:
     def __init__(
         self,
         value: str = "",
-        image_path: str = "",
         predecessors: set[Self] | None = None,
         requires_grad: bool = True,
         *,
@@ -22,8 +21,6 @@ class Variable:
 
         :param value: The string value of this variable, defaults to "". In the future, we'll go multimodal, for sure!
         :type value: str or bytes, optional
-        :param image_path: The path to the image file, defaults to "". If present we will read from disk or download the image.
-        :type image_path: str, optional
         :param predecessors: predecessors of this variable in the computation graph, defaults to None. Here, for instance, if we have a prompt -> response through an LLM call, we'd call the prompt the predecessor, and the response the successor.
         :type predecessors: List[Variable], optional
         :param requires_grad: Whether this variable requires a gradient, defaults to True. If False, we'll not compute the gradients on this variable.
@@ -46,17 +43,8 @@ class Variable:
         assert isinstance(value, str | bytes | int)
         if isinstance(value, int):
             value = str(value)
-        # We'll currently let "empty variables" slide, but we'll need to handle this better in the future.
-        # if value == "" and image_path == "":
-        #    raise ValueError("Please provide a value or an image path for the variable")
-        if value != "" and image_path != "":
-            raise ValueError(
-                "Please provide either a value or an image path for the variable, not both."
-            )
 
         self.value: str = value
-        if image_path != "":
-            raise NotImplementedError(image_path)
 
         self.gradients: set[Variable] = set()
         self.gradients_context: Dict[Variable, str | dict] = {}
@@ -64,7 +52,7 @@ class Variable:
         self.role_description = role_description
         self.predecessors = predecessors
         self.requires_grad: bool = requires_grad
-        self._reduce_meta: list = []
+        self.reduce_meta: list = []
 
         if requires_grad and isinstance(value, bytes):
             raise ValueError(
@@ -106,7 +94,7 @@ class Variable:
     def reset_gradients(self):
         self.gradients = set()
         self.gradients_context = {}
-        self._reduce_meta = []
+        self.reduce_meta = []
 
     def get_role_description(self) -> str:
         return self.role_description
@@ -245,8 +233,8 @@ class Variable:
             if v.grad_fn is not None:
                 node_label += f"<br/><b><font color='{label_color}'>Grad Fn: </font></b> {wrap_and_escape(get_grad_fn_name(str(v.grad_fn)))}"
 
-            if v._reduce_meta != []:
-                node_label += f"<br/><b><font color='{label_color}'>Reduce Meta: </font></b> {wrap_and_escape(str(v._reduce_meta))}"
+            if v.reduce_meta != []:
+                node_label += f"<br/><b><font color='{label_color}'>Reduce Meta: </font></b> {wrap_and_escape(str(v.reduce_meta))}"
 
             if print_gradients:
                 node_label += f"<br/><b><font color='{label_color}'>Gradients: </font></b> {wrap_and_escape(v.get_gradient_text())}"
@@ -290,7 +278,7 @@ def _check_and_reduce_gradients(
     :return: The reduced gradients for the variable.
     :rtype: Set[Variable]
     """
-    if variable._reduce_meta == []:
+    if not variable.reduce_meta:
         return variable.gradients
     if variable.get_gradient_text() == "":
         return variable.gradients
@@ -305,7 +293,7 @@ def _check_and_reduce_gradients(
 
     # Go through each gradient, group them by their reduction groups
     for gradient in variable.gradients:
-        for reduce_item in gradient._reduce_meta:
+        for reduce_item in gradient.reduce_meta:
             id_to_gradient_set[reduce_item["id"]].add(gradient)
             id_to_op[reduce_item["id"]] = reduce_item["op"]
     # For each reduction group, perform the reduction operation
@@ -341,7 +329,7 @@ def _backward_idempotent(
         - The feedback from each variable is stored in their respective gradients.
         - The feedback from the `summation` variable is combined and stored in the `summation_gradients` variable.
         - The feedback from each variable is later used for feedback propagation to other variables in the computation graph.
-        - The `_reduce_meta` attribute of the `summation` variable is used to reduce the feedback if specified.
+        - The `reduce_meta` attribute of the `summation` variable is used to reduce the feedback if specified.
     """
     summation_gradients = summation.get_gradient_text()
     for variable in variables:
@@ -364,9 +352,9 @@ def _backward_idempotent(
         )
         variable.gradients.add(var_gradients)
 
-        if summation._reduce_meta != []:
-            var_gradients._reduce_meta.extend(summation._reduce_meta)
-            variable._reduce_meta.extend(summation._reduce_meta)
+        if not summation.reduce_meta:
+            var_gradients.reduce_meta.extend(summation.reduce_meta)
+            variable.reduce_meta.extend(summation.reduce_meta)
 
         variable.gradients.add(
             Variable(

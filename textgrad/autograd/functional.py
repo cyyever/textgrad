@@ -1,9 +1,9 @@
 from typing import List
 
-from textgrad import Variable
-from textgrad.engine import EngineLM
-from textgrad.autograd.algebra import Sum, Aggregate
-from textgrad.autograd.llm_ops import LLMCall, FormattedLLMCall
+from ..variable import Variable
+from ..engine import EngineLM
+from .algebra import Aggregate, Sum
+from .llm_ops import FormattedLLMCall, LLMCall
 
 
 def sum(variables: List[Variable]) -> Variable:
@@ -37,9 +37,9 @@ def aggregate(variables: List[Variable]) -> Variable:
 def llm_call(
     input_variable: Variable,
     engine: EngineLM,
-    response_role_description: str = None,
-    system_prompt: Variable = None,
-):
+    response_role_description: str | None = None,
+    system_prompt: Variable | None = None,
+) -> Variable:
     """A functional version of the LLMCall.
     The simple LLM call function. This function will call the LLM with the input and return the response, also register the grad_fn for backpropagation.
 
@@ -75,7 +75,7 @@ def formatted_llm_call(
     engine: EngineLM,
     format_string: str,
     fields: dict[str, str],
-    system_prompt: Variable = None,
+    system_prompt: Variable | None = None,
 ):
     """A functional version of the LLM call with formatted strings.
     Just a wrapper around the FormattedLLMCall class.

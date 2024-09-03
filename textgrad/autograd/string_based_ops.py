@@ -1,8 +1,12 @@
-from textgrad import logger
-from textgrad.variable import Variable
-from textgrad.engine import EngineLM
-from .function import Function, BackwardContext
-from typing import Callable, Dict, List
+from typing import Callable, Dict
+
+from ..engine import EngineLM
+from ..logger import logger
+from ..variable import Variable
+from .function import BackwardContext, Function
+# Some instructions for the backward pass are shared with LLMs
+from .llm_backward_prompts import (BACKWARD_SYSTEM_PROMPT,
+                                   EVALUATE_VARIABLE_INSTRUCTION)
 
 CONVERSATION_TEMPLATE_STRING = (
     "Function purpose: {function_purpose}\n\n"
@@ -34,9 +38,6 @@ OBJECTIVE_INSTRUCTION_BASE = (
     "Our only goal is to improve the above metric, and nothing else. </OBJECTIVE_FUNCTION>\n\n"
 )
 
-# Some instructions for the backward pass are shared with LLMs
-from .llm_backward_prompts import EVALUATE_VARIABLE_INSTRUCTION, BACKWARD_SYSTEM_PROMPT
-
 
 class StringBasedFunction(Function):
     def __init__(self, fn: Callable, function_purpose: str):
@@ -53,7 +54,7 @@ class StringBasedFunction(Function):
         self.function_purpose = function_purpose
 
     def forward(
-        self, inputs: Dict[str, Variable], response_role_description: str = None
+        self, inputs: Dict[str, Variable], response_role_description: str | None = None
     ) -> Variable:
         """
         The forward mode for string-based functions
@@ -70,12 +71,12 @@ class StringBasedFunction(Function):
         # Create the response variable
         response = Variable(
             value=response_string,
-            predecessors=list(inputs.values()),
+            predecessors=set(inputs.values()),
             role_description=response_role_description,
         )
 
         logger.info(
-            f"StringBasedFunction",
+            "StringBasedFunction",
             extra={"text": f"In: {inputs}, Out: {response_string}"},
         )
 
@@ -122,7 +123,7 @@ class StringBasedFunction(Function):
 
     @staticmethod
     def _backward_through_string_fn_chain(
-        variables: List[Variable],
+        variables: set[Variable],
         response: Variable,
         inputs: Dict[str, Variable],
         function_purpose: str,
@@ -156,14 +157,14 @@ class StringBasedFunction(Function):
             )
 
             logger.info(
-                f"_backward_through_string_fn",
+                "_backward_through_string_fn",
                 extra={"_backward_through_string_fn": backward_prompt},
             )
             gradient_value = backward_engine(
                 backward_prompt, system_prompt=BACKWARD_SYSTEM_PROMPT
             )
             logger.info(
-                f"_backward_through_string_fn gradient",
+                "_backward_through_string_fn gradient",
                 extra={"_backward_through_string_fn": gradient_value},
             )
 
@@ -179,9 +180,9 @@ class StringBasedFunction(Function):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)
 
     @staticmethod
     def _construct_string_fn_base_backward_prompt(backward_info: dict[str, str]) -> str:
@@ -195,7 +196,7 @@ class StringBasedFunction(Function):
 
     @staticmethod
     def _backward_through_string_fn_base(
-        variables: List[Variable],
+        variables: set[Variable],
         response: Variable,
         inputs: Dict[str, Variable],
         function_purpose: str,
@@ -228,14 +229,14 @@ class StringBasedFunction(Function):
             )
 
             logger.info(
-                f"_backward_through_string_fn prompt",
+                "_backward_through_string_fn prompt",
                 extra={"_backward_through_string_fn": backward_prompt},
             )
             gradient_value = backward_engine(
                 backward_prompt, system_prompt=BACKWARD_SYSTEM_PROMPT
             )
             logger.info(
-                f"_backward_through_string_fn gradient",
+                "_backward_through_string_fn gradient",
                 extra={"_backward_through_string_fn": gradient_value},
             )
 
@@ -251,6 +252,6 @@ class StringBasedFunction(Function):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)

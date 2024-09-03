@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "textgrad"
+version="0.1.5"
+requires-python = ">=3.11"
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [
+  {name = "Zou Group", email = "merty@stanford.edu"},
+]
+license = {text = "BSD License"}
+classifiers = [
+      "Development Status :: 2 - Pre-Alpha",
+      "Intended Audience :: Developers",
+      "License :: OSI Approved :: MIT License",
+      "Natural Language :: English",
+      "Programming Language :: Python :: 3.11",
+]
+
+[tool.setuptools.package-dir]
+"textgrad"= "./textgrad"
+
+[project.urls]
+Repository = "https://github.com/zou-group/textgrad"
+
+[tool.pyright]
+include = ["textgrad"]
+defineConstant = { DEBUG = true }
+
+reportMissingImports = true
+reportMissingTypeStubs = false
