@@ -90,8 +90,8 @@ class Module(ABC):
             yield p.get_role_description(), p
 
     @abstractmethod
-    def forward(self, *args: Any, **kwargs: Any) -> None:
+    def forward(self, *args: Any, **kwargs: Any) -> Variable:
         pass
 
-    def __call__(self, *args: Any, **kwargs: Any) -> None:
+    def __call__(self, *args: Any, **kwargs: Any) -> Variable:
         return self.forward(*args, **kwargs)

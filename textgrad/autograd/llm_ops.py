@@ -63,9 +63,7 @@ class LLMCall(Function):
         )
 
         # Make the LLM Call
-        response_text = self.engine(
-            input_variable.value, system_prompt=system_prompt_value
-        )
+        response_text = self.engine(input_variable.value, prompt=system_prompt_value)
         assert isinstance(response_text, str)
 
         # Create the response variable

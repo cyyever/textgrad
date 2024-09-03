@@ -25,7 +25,7 @@ class EngineLM(ABC):
     # def generate(self, prompt, system_prompt=None, **kwargs) -> Any:
     #     pass
 
-    def __call__(self, input_text: str, prompt: str, **kwargs) -> Any:
+    def __call__(self, input_text: str, prompt: str | None = None, **kwargs) -> Any:
         pass
 
 
