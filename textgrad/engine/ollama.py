@@ -21,6 +21,10 @@ class ChatOllama(EngineLM, CachedEngine):
         messages = []
         if prompt is not None:
             messages.append(ollama.Message(role="assistant", content=prompt))
+        else:
+            messages.append(
+                ollama.Message(role="assistant", content=self.system_prompt)
+            )
         messages.append(ollama.Message(role="user", content=input_text))
         response = ollama.chat(model=self.model_string, messages=messages)
         return response["message"]["content"]
