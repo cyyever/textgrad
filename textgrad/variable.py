@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Iterable, Self, Set
 
 from graphviz import Digraph
 
+from .config import validate_engine_or_get_default
 from .engine import EngineLM
 from .logger import logger
 
@@ -133,7 +134,7 @@ class Variable:
 
         return "\n".join([g.value for g in self.gradients])
 
-    def backward(self, engine: EngineLM) -> None:
+    def backward(self, engine: EngineLM | None = None) -> None:
         """
         Backpropagate gradients through the computation graph starting from this variable.
 
@@ -144,7 +145,7 @@ class Variable:
         :raises Exception: If both an engine is provided and the global engine is set.
         """
 
-        backward_engine = engine
+        backward_engine = validate_engine_or_get_default(engine)
         """Taken from https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py"""
         # topological order all the predecessors in the graph
         topo = []
