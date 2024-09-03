@@ -34,6 +34,10 @@ def validate_multimodal_engine(engine):
 
 def get_engine(engine_name: str, **kwargs) -> EngineLM:
     engine_name = __ENGINE_NAME_SHORTCUTS__.get(engine_name, engine_name)
+    if engine_name.startswith("ollama"):
+        from .ollama import ChatOllama
+
+        return ChatOllama(model_string=engine_name.split("-")[-1], **kwargs)
 
     if (
         "seed" in kwargs
