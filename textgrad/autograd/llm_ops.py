@@ -1,22 +1,18 @@
 from typing import Iterable, List
 
-from textgrad import logger
-from textgrad.config import validate_engine_or_get_default
-from textgrad.defaults import SYSTEM_PROMPT_DEFAULT_ROLE, VARIABLE_OUTPUT_DEFAULT_ROLE
-from textgrad.engine import EngineLM
-from textgrad.variable import Variable
-
+from ..defaults import SYSTEM_PROMPT_DEFAULT_ROLE, VARIABLE_OUTPUT_DEFAULT_ROLE
+from ..engine import EngineLM
+from ..logger import logger
+from ..variable import Variable
 from .function import BackwardContext, Function
-from .llm_backward_prompts import (
-    BACKWARD_SYSTEM_PROMPT,
-    CONVERSATION_START_INSTRUCTION_BASE,
-    CONVERSATION_START_INSTRUCTION_CHAIN,
-    CONVERSATION_TEMPLATE,
-    EVALUATE_VARIABLE_INSTRUCTION,
-    IN_CONTEXT_EXAMPLE_PROMPT_ADDITION,
-    OBJECTIVE_INSTRUCTION_BASE,
-    OBJECTIVE_INSTRUCTION_CHAIN,
-)
+from .llm_backward_prompts import (BACKWARD_SYSTEM_PROMPT,
+                                   CONVERSATION_START_INSTRUCTION_BASE,
+                                   CONVERSATION_START_INSTRUCTION_CHAIN,
+                                   CONVERSATION_TEMPLATE,
+                                   EVALUATE_VARIABLE_INSTRUCTION,
+                                   IN_CONTEXT_EXAMPLE_PROMPT_ADDITION,
+                                   OBJECTIVE_INSTRUCTION_BASE,
+                                   OBJECTIVE_INSTRUCTION_CHAIN)
 
 
 class LLMCall(Function):
@@ -29,7 +25,7 @@ class LLMCall(Function):
         :type system_prompt: Variable, optional
         """
         super().__init__()
-        self.engine = validate_engine_or_get_default(engine)
+        self.engine = engine
         self.system_prompt = system_prompt
         if self.system_prompt and self.system_prompt.get_role_description() is None:
             self.system_prompt.set_role_description(SYSTEM_PROMPT_DEFAULT_ROLE)
@@ -73,9 +69,9 @@ class LLMCall(Function):
         response = Variable(
             value=response_text,
             predecessors=(
-                [self.system_prompt, input_variable]
+                {self.system_prompt, input_variable}
                 if self.system_prompt
-                else [input_variable]
+                else {input_variable}
             ),
             role_description=response_role_description,
         )
@@ -207,9 +203,9 @@ class LLMCall(Function):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)
 
     @staticmethod
     def _construct_llm_base_backward_prompt(backward_info: dict[str, str]) -> str:
@@ -283,9 +279,9 @@ class LLMCall(Function):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)
 
 
 class FormattedLLMCall(LLMCall):
@@ -583,9 +579,9 @@ class LLMCall_with_in_context_examples(LLMCall):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)
 
     @staticmethod
     def _construct_llm_base_backward_prompt(backward_info: dict[str, str]) -> str:
@@ -676,6 +672,6 @@ class LLMCall_with_in_context_examples(LLMCall):
                 "variable_desc": variable.get_role_description(),
             }
 
-            if response._reduce_meta:
-                var_gradients._reduce_meta.extend(response._reduce_meta)
-                variable._reduce_meta.extend(response._reduce_meta)
+            if response.reduce_meta:
+                var_gradients.reduce_meta.extend(response.reduce_meta)
+                variable.reduce_meta.extend(response.reduce_meta)

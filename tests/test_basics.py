@@ -13,25 +13,20 @@ logging.disable(logging.CRITICAL)
 
 # Dummy engine that always returns "Hello World"
 class DummyEngine(EngineLM):
-    def generate(self, prompt, system_prompt=None, **kwargs):
+    def generate(self, *args, **kwargs):
         return "Hello World"
 
-    def __call__(self, prompt, system_prompt=None):
+    def __call__(self, prompt, *args, **kwargs):
         return self.generate(prompt)
 
 
 class DummyMultimodalEngine(EngineLM):
 
-    def __init__(self, is_multimodal=False):
+    def __init__(self, is_multimodal=False) -> None:
         self.is_multimodal = is_multimodal
         self.model_string = "gpt-4o"  # fake
 
-    def generate(
-        self,
-        content: Union[str, List[Union[str, bytes]]],
-        system_prompt: str = None,
-        **kwargs
-    ):
+    def generate(self, content: Union[str, List[Union[str, bytes]]], *args, **kwargs):
         if isinstance(content, str):
             return "Hello Text"
 
@@ -44,16 +39,16 @@ class DummyMultimodalEngine(EngineLM):
 
             return "Hello Text from Image"
 
-    def __call__(self, prompt, system_prompt=None):
+    def __call__(self, prompt, *args, **kwargs):
         return self.generate(prompt)
 
 
 # Idempotent engine that returns the prompt as is
 class IdempotentEngine(EngineLM):
-    def generate(self, prompt, system_prompt=None, **kwargs):
+    def generate(self, prompt, *args, **kwargs):
         return prompt
 
-    def __call__(self, prompt, system_prompt=None):
+    def __call__(self, prompt, *args, **kwargs):
         return self.generate(prompt)
 
 

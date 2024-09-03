@@ -1,10 +1,9 @@
 # Operations over variables.
 from typing import Iterable
 
-from textgrad import logger
-from textgrad.engine import EngineLM
-from textgrad.variable import Variable
-
+from ..engine import EngineLM
+from ..logger import logger
+from ..variable import Variable
 from .function import BackwardContext, Function
 from .reduce_prompts import REDUCE_MEAN_SYSTEM_PROMPT, construct_reduce_prompt
 
@@ -112,9 +111,9 @@ class Sum(Function):
             )
             variable.gradients.add(var_gradients)
 
-            if summation._reduce_meta != []:
-                var_gradients._reduce_meta.extend(summation._reduce_meta)
-                variable._reduce_meta.extend(summation._reduce_meta)
+            if summation.reduce_meta != []:
+                var_gradients.reduce_meta.extend(summation.reduce_meta)
+                variable.reduce_meta.extend(summation.reduce_meta)
 
             variable.gradients.add(
                 Variable(
@@ -160,32 +159,32 @@ class Aggregate(Function):
             )
         )
 
-        aggregated_variable._reduce_meta = [reduce_meta]
+        aggregated_variable.reduce_meta = [reduce_meta]
         return aggregated_variable
 
     def backward(self, aggregated_variable: Variable, backward_engine: EngineLM):
         children_variable = aggregated_variable.predecessors
         for variable in children_variable:
             aggregate_gradients = aggregated_variable.get_gradient_text()
-        if aggregate_gradients == "":
-            variable_gradient_value = ""
-        else:
-            variable_gradient_value = f"Here is the combined feedback we got for this specific {variable.get_role_description()} and other variables: {aggregate_gradients}."
+            if aggregate_gradients == "":
+                variable_gradient_value = ""
+            else:
+                variable_gradient_value = f"Here is the combined feedback we got for this specific {variable.get_role_description()} and other variables: {aggregate_gradients}."
 
-        logger.info(
-            "aggregation backward",
-            extra={
-                "v_gradient_value": variable_gradient_value,
-                "aggregation_role": aggregated_variable.get_role_description(),
-            },
-        )
+            logger.info(
+                "aggregation backward",
+                extra={
+                    "v_gradient_value": variable_gradient_value,
+                    "aggregation_role": aggregated_variable.get_role_description(),
+                },
+            )
 
-        var_gradients = Variable(
-            value=variable_gradient_value,
-            role_description=f"feedback to {variable.get_role_description()}",
-        )
-        variable.gradients.add(var_gradients)
+            var_gradients = Variable(
+                value=variable_gradient_value,
+                role_description=f"feedback to {variable.get_role_description()}",
+            )
+            variable.gradients.add(var_gradients)
 
-        if aggregated_variable._reduce_meta != []:
-            var_gradients._reduce_meta.extend(aggregated_variable._reduce_meta)
-            variable._reduce_meta.extend(aggregated_variable._reduce_meta)
+            if aggregated_variable.reduce_meta != []:
+                var_gradients.reduce_meta.extend(aggregated_variable.reduce_meta)
+                variable.reduce_meta.extend(aggregated_variable.reduce_meta)
