@@ -206,7 +206,7 @@ class TextualGradientDescent(Optimizer):
             prompt_update_parameter = self._update_prompt(parameter)
             assert isinstance(prompt_update_parameter, str)
             new_text = self.engine(
-                prompt_update_parameter, system_prompt=self.optimizer_system_prompt
+                prompt_update_parameter, prompt=self.optimizer_system_prompt
             )
             logger.info(
                 "TextualGradientDescent optimizer response",

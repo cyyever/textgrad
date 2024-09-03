@@ -261,7 +261,7 @@ class LLMCall(Function):
                 extra={"_backward_through_llm": backward_prompt},
             )
             gradient_value = backward_engine(
-                backward_prompt, system_prompt=BACKWARD_SYSTEM_PROMPT
+                backward_prompt, prompt=BACKWARD_SYSTEM_PROMPT
             )
             logger.info(
                 "_backward_through_llm gradient",
