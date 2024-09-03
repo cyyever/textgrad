@@ -1,19 +1,18 @@
 import os
 
-import google.generativeai as genai
 import platformdirs
 from tenacity import retry, stop_after_attempt, wait_random_exponential
+
+import ollama
 
 from .base import CachedEngine, EngineLM
 
 
 class ChatOllama(EngineLM, CachedEngine):
-    SYSTEM_PROMPT = "You are a helpful, creative, and smart assistant."
-
     def __init__(
         self,
         model_string="llama3.1",
-        system_prompt: str = SYSTEM_PROMPT,
+        system_prompt: str = EngineLM.SYSTEM_PROMPT,
     ) -> None:
         root = platformdirs.user_cache_dir("textgrad")
         cache_path = os.path.join(root, f"cache_ollama_{model_string}.db")
@@ -24,7 +23,7 @@ class ChatOllama(EngineLM, CachedEngine):
 
     @retry(wait=wait_random_exponential(min=1, max=5), stop=stop_after_attempt(5))
     def __call__(self, prompt, **kwargs):
-        return self.generate(prompt, **kwargs)
+        return ollama.generate(model=self.model_string, prompt=prompt, **kwargs)
 
     @retry(wait=wait_random_exponential(min=1, max=5), stop=stop_after_attempt(5))
     def generate(

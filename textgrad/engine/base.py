@@ -1,19 +1,29 @@
 import hashlib
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 import diskcache as dc
 
 
 class EngineLM(ABC):
-    system_prompt: str = "You are a helpful, creative, and smart assistant."
-    model_string: str
+    def __init__(self, system_prompt: str | None, model_string: str | None) -> None:
+        self.system_prompt = (
+            system_prompt
+            if system_prompt is not None
+            else "You are a helpful, creative, and smart assistant."
+        )
+        self.__model_string: str | None = model_string
 
-    @abstractmethod
-    def generate(self, prompt, system_prompt=None, **kwargs):
-        pass
+    @property
+    def model_string(self) -> str:
+        assert self.__model_string is not None
+        return self.__model_string
 
-    def __call__(self, *args, **kwargs) -> Any:
+    # @abstractmethod
+    # def generate(self, prompt, system_prompt=None, **kwargs) -> Any:
+    #     pass
+
+    def __call__(self, input_text: str, prompt: str, **kwargs) -> Any:
         pass
 
 
@@ -26,7 +36,7 @@ class CachedEngine:
     def _hash_prompt(self, prompt: str) -> str:
         return hashlib.sha256(f"{prompt}".encode()).hexdigest()
 
-    def _check_cache(self, prompt: str) -> str:
+    def _check_cache(self, prompt: str) -> str | None:
         if prompt in self.cache:
             return self.cache[prompt]
         return None

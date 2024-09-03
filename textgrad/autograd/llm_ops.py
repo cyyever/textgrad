@@ -27,7 +27,10 @@ class LLMCall(Function):
         super().__init__()
         self.engine = engine
         self.system_prompt = system_prompt
-        if self.system_prompt and self.system_prompt.get_role_description() is None:
+        if (
+            self.system_prompt is not None
+            and self.system_prompt.get_role_description() is None
+        ):
             self.system_prompt.set_role_description(SYSTEM_PROMPT_DEFAULT_ROLE)
 
     def forward(
@@ -143,7 +146,7 @@ class LLMCall(Function):
         prompt: str,
         system_prompt: str,
         backward_engine: EngineLM,
-    ):
+    ) -> None:
         """
         Backward through the LLM to compute gradients for each variable, in the case where the output has gradients on them.
         i.e. applying the chain rule.
