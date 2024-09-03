@@ -6,7 +6,9 @@ import diskcache as dc
 
 
 class EngineLM(ABC):
-    def __init__(self, system_prompt: str | None, model_string: str | None) -> None:
+    def __init__(
+        self, system_prompt: str | None = None, model_string: str | None = None
+    ) -> None:
         self.system_prompt = (
             system_prompt
             if system_prompt is not None
